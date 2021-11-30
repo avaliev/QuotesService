@@ -2,11 +2,16 @@ package avaliev.portfolio.quotesservice.service;
 
 import avaliev.portfolio.quotesservice.api.EffectiveQuote;
 import avaliev.portfolio.quotesservice.api.QuoteDto;
+import avaliev.portfolio.quotesservice.entity.Quote;
+import avaliev.portfolio.quotesservice.repos.QuoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -14,17 +19,36 @@ public class QuotesService {
 
     private Logger log = LoggerFactory.getLogger(this.getClass());
 
-    public void addQuotes(List<QuoteDto> quotes) {
-        List<QuoteDto> validatedQuotes = validateQuotes(quotes);
-        //TODO создать запрос для вставки elvl by bid and ask за один запрос
+    private QuoteRepository quoteRepository;
+
+    @Autowired
+    public QuotesService(QuoteRepository quoteRepository) {
+        this.quoteRepository = quoteRepository;
     }
 
-    public EffectiveQuote getQuote(String isin) {
-        return null;
+    public void addQuotes(List<QuoteDto> quotes) {
+        List<QuoteDto> validatedQuotes = validateQuotes(quotes);
+
+        validatedQuotes.forEach(quoteDto -> quoteRepository.saveOrUpdateQuote(
+                quoteDto.getIsin(),
+                quoteDto.getBid(),
+                quoteDto.getAsk()
+        ));
+    }
+
+    public Optional<EffectiveQuote> getQuote(String isin) {
+        Optional<Quote> quote = quoteRepository.findById(isin);
+        return quote.map(EffectiveQuote::createFrom);
     }
 
     public List<EffectiveQuote> getAllQuotes() {
-        return null;
+        List<EffectiveQuote> result = new ArrayList<>();
+        quoteRepository.findAll().iterator().forEachRemaining(
+                q -> {
+                    result.add(new EffectiveQuote(q.getIsin(), q.getElvl()));
+                }
+        );
+        return result;
     }
 
 
